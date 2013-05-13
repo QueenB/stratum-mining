@@ -32,7 +32,7 @@ cd litecoin_scrypt
 
 sudo python setup.py install
 
-Now rename the example config file (conf/config_example.py) to config.py and make any changes as required.
+Now rename the example config file (conf/config_sample.py) to config.py and make any changes as required.
 
 Run with the following command:
 
