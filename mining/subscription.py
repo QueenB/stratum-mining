@@ -1,6 +1,7 @@
 from stratum.pubsub import Pubsub, Subscription
 from mining.interfaces import Interfaces
 
+from stratum import settings
 import stratum.logger
 log = stratum.logger.get_logger('subscription')
 
@@ -16,10 +17,10 @@ class MiningSubscription(Subscription):
            new block which we have to broadcast clients.'''
         
         start = Interfaces.timestamper.time()
-        
         clean_jobs = is_new_block
+        
         (job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, _) = \
-                        Interfaces.template_registry.get_last_broadcast_args()
+            Interfaces.template_registry.get_last_broadcast_args()
         
         # Push new job to subscribed clients
         cls.emit(job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, clean_jobs)
@@ -39,7 +40,8 @@ class MiningSubscription(Subscription):
         # Force set higher difficulty
         # change this (default "16") to alter your share difficulty. 
         # Setting to "1" will produce difficulty 1 shares, default is difficulty "16".
-        self.connection_ref().rpc('mining.set_difficulty', [16,], is_notification=True)
+        #self.connection_ref().rpc('mining.set_difficulty', [16,], is_notification=True)
+        self.connection_ref().rpc('mining.set_difficulty', [settings.POOL_TARGET, ], is_notification=True)
         #self.connection_ref().rpc('client.get_version', [])
         
         # Force client to remove previous jobs if any (eg. from previous connection)

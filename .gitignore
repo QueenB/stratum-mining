@@ -1,1 +1,9 @@
 *.pyc
+conf/config.py
+NOTES
+run
+pooldb.sqlite
+archives/*
+twistd.pid
+.project
+.pydevproject

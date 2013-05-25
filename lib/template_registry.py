@@ -62,7 +62,7 @@ class TemplateRegistry(object):
         from last known template.'''
         return self.last_block.broadcast_args
         
-    def add_template(self, block):
+    def add_template(self, block,block_height):
         '''Adds new template to the registry.
         It also clean up templates which should
         not be used anymore.'''
@@ -95,7 +95,7 @@ class TemplateRegistry(object):
         if new_block:
             # Tell the system about new block
             # It is mostly important for share manager
-            self.on_block_callback(prevhash)
+            self.on_block_callback(prevhash, block_height)
 
         # Everything is ready, let's broadcast jobs!
         self.on_template_callback(new_block)
@@ -128,7 +128,7 @@ class TemplateRegistry(object):
                 
         template = self.block_template_class(Interfaces.timestamper, self.coinbaser, JobIdGenerator.get_new_id())
         template.fill_from_rpc(data)
-        self.add_template(template)
+        self.add_template(template,data['height'])
 
         log.info("Update finished, %.03f sec, %d txes" % \
                     (Interfaces.timestamper.time() - start, len(template.vtx)))
@@ -166,7 +166,7 @@ class TemplateRegistry(object):
         
         return j
         
-    def submit_share(self, job_id, worker_name, extranonce1_bin, extranonce2, ntime, nonce,
+    def submit_share(self, job_id, worker_name, session, extranonce1_bin, extranonce2, ntime, nonce,
                      difficulty):
         '''Check parameters and finalize block template. If it leads
            to valid block candidate, asynchronously submits the block
@@ -233,7 +233,9 @@ class TemplateRegistry(object):
         header_hex = header_hex+"000000800000000000000000000000000000000000000000000000000000000000000000000000000000000080020000"
          
         target_user = self.diff_to_target(difficulty)        
-        if hash_int > target_user:
+        if hash_int > target_user and \
+		( 'prev_jobid' not in session or session['prev_jobid'] < job_id \
+		or 'prev_diff' not in session or hash_int > self.diff_to_target(session['prev_diff']) ):
             raise SubmitException("Share is above target")
 
         # Mostly for debugging purposes
@@ -241,11 +243,13 @@ class TemplateRegistry(object):
         if hash_int <= target_info:
             log.info("Yay, share with diff above 100000")
 
-        
         log.info("target_info: %s" % target_info)
         log.info("hash_int: %s " % hash_int)
         log.info("job.target: %s " % job.target)
 	
+	# Algebra tells us the diff_to_target is the same as hash_to_diff
+	share_diff = int(self.diff_to_target(hash_int))
+
         # 5. Compare hash with target of the network        
         if hash_int <= job.target:
             # Yay! It is block candidate! 
@@ -262,6 +266,6 @@ class TemplateRegistry(object):
             serialized = binascii.hexlify(job.serialize())
             on_submit = self.bitcoin_rpc.submitblock(serialized)
             
-            return (header_hex, block_hash_hex, on_submit)
+            return (header_hex, block_hash_hex, share_diff, on_submit)
         
-        return (header_hex, block_hash_hex, None)
+        return (header_hex, block_hash_hex, share_diff, None)
